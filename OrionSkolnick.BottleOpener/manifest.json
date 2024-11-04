@@ -1,0 +1,10 @@
+{
+  "Id": "OrionSkolnick.BottleOpener",
+  "AssemblyPath": "OrionSkolnick.BottleOpener.dll",
+  "Metadata": {
+    "Name": "Bottle Opener",
+    "Author": "Orion Skolnick",
+    "Version": "0.1.0",
+    "Description": "get drunk!"
+  }
+}
