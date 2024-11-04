@@ -17,7 +17,7 @@ public class DrunkPatch() : IScriptMod {
     public IEnumerable<Token> Modify(string path, IEnumerable<Token> tokens) { //the goal of this is to remove the "target" line in stage 2
 
         var waiter = new MultiTokenWaiter([ //stage 1, finds line preceding target
-			      // tokenized "drunk_timer += 9000;"
+			      // tokenized "drunk_timer += NUMBER;"
             //
             t => t is IdentifierToken{Name: "drunk_timer"},
             t => t.Type is TokenType.OpAssignAdd,
