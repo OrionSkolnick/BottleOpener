@@ -1,5 +1,7 @@
 /*
- * 
+ * This file is what is editing the drunk timer code in the player file ("player.gd")
+ * It removes the lines 2022 and 2025, which fix the drunk time limit below an arbitrary amount
+ * It does this by tokenizing the script and then skipping over the line where the code needed to go
  */
 
 using GDWeave.Godot;
@@ -12,25 +14,32 @@ public class DrunkPatch() : IScriptMod {
 
     public bool ShouldRun(string path) => path == "res://Scenes/Entities/Player/player.gdc";
 
-    public IEnumerable<Token> Modify(string path, IEnumerable<Token> tokens) {
-        var waiter = new MultiTokenWaiter ([ //its getting the code line "drunk_timer = clamp(drunk_timer, 0, 50000" from lines 2022 and 2025 in the source code
-            t => t is IdentifierToken {Name: "drunk_timer"},
-            t => t.Type is TokenType.OpAssign,
-            t => t.AssociatedData is 53, //built in function ID for clamp, this is just the clamp function token
-            t => t.Type is TokenType.ParenthesisOpen,
-            t => t is IdentifierToken {Name: "drunk_timer"},
-            t => t.Type is TokenType.Comma,
-            t => t is ConstantToken {Value: IntVariant{ Value: 0}},
-            t => t.Type is TokenType.Comma,
-            t => t is ConstantToken {Value: IntVariant{ Value: 50000}} //stop here so you can replace at the check
+    public IEnumerable<Token> Modify(string path, IEnumerable<Token> tokens) { //the goal of this is to remove the "target" line in stage 2
+
+        var waiter = new MultiTokenWaiter([ //stage 1, finds line preceding target
+			      // tokenized "drunk_timer += 9000;"
+            //
+            t => t is IdentifierToken{Name: "drunk_timer"},
+            t => t.Type is TokenType.OpAssignAdd,
+            t => t is ConstantToken {Value: IntVariant},
+            t => t.Type is TokenType.Newline
         ]);
 
+        var eater = new TokenWaiter( //stage 2, targets newline at end of target line
+            t => t.Type is TokenType.Newline
+        , waitForReady: true);
+
         foreach (var token in tokens) {
-            if (waiter.Check(token)) {
-                yield return new ConstantToken(new IntVariant(long.MaxValue)); //replacing the last token (the constant 50000) with our own value
-                waiter.Reset(); //reset so it can do it with the next match
-                continue; //continue so it won't try and add the constant token at the "else" block
-            } else {
+            if (eater.Ready && waiter.Matched) { //when skipping over the line
+                if (eater.Check(token)) { //case for when its the end of the line (token is TokenType.Newline here)
+                    waiter.Reset();
+                    eater.Reset();
+                    yield return token;
+                }
+                continue;
+            } if (waiter.Check(token)) { //when stage 1 completes, activates stage 2 loop by setting eater to ready
+                eater.SetReady();
+            } else { //passes normal lines
                 yield return token;
             }
         }
